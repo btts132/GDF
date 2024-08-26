@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Text Search with Navigation</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+        }
+
+        #text-container {
+            margin-top: 20px;
+            border: 1px solid #ccc;
+            padding: 10px;
+            min-height: 100px;
+            max-height: 200px;
+            overflow-y: auto;
+            background-color: #f9f9f9;
+            white-space: pre-wrap; /* Preserve whitespace and line breaks */
+        }
+
+        .highlight {
+            background-color: yellow;
+            font-weight: bold;
+        }
+
+        #search-result {
+            margin-top: 20px;
+        }
+
+        input[type="text"] {
+            font-family: Arial, sans-serif;
+            font-size: 14px;
+        }
+
+        .controls {
+            margin-top: 10px;
+            display: flex;
+            align-items: center;
+        }
+
+        .controls button {
+            margin-left: 5px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Text Search with Navigation</h1>
+    <div>
+        <label for="search-word">Search for a word:</label><br>
+        <input type="text" id="search-word" placeholder="Enter word to search...">
+        <div class="controls">
+            <button onclick="searchText()">Search</button>
+            <button onclick="prevMatch()">Previous</button>
+            <button onclick="nextMatch()">Next</button>
+            <button onclick="goToBeginning()">Go to Beginning</button>
+        </div>
+    </div>
+    <div id="text-container"></div>
+    <div id="search-result"></div>
+
+    <script>
+        let searchMatches = [];
+        let currentIndex = -1;
+        let textContent = '';
+
+        // Load text from external file
+        fetch('textfile.txt')
+            .then(response => response.text())
+            .then(text => {
+                textContent = text;
+                displayText(textContent);
+            })
+            .catch(error => {
+                console.error('Error loading text file:', error);
+                document.getElementById('text-container').innerText = 'Failed to load text file.';
+            });
+
+        function displayText(text) {
+            document.getElementById('text-container').innerText = text;
+        }
+
+        function searchText() {
+            const searchWord = document.getElementById('search-word').value;
+            const textContainer = document.getElementById('text-container');
+            const searchResult = document.getElementById('search-result');
+            
+            // Reset search state
+            searchMatches = [];
+            currentIndex = -1;
+
+            if (!searchWord) {
+                searchResult.innerHTML = 'Please enter a word to search.';
+                return;
+            }
+
+            // Escape special characters in the search word for the regex
+            const escapedSearchWord = searchWord.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
+            const regex = new RegExp(`(${escapedSearchWord})`, 'gi');
+
+            // Find all matches and create highlighted text
+            let highlightedText = textContent.replace(regex, (match, p1, offset) => {
+                searchMatches.push(offset); // Store the position of the match
+                return `<span class="highlight" data-index="${searchMatches.length - 1}">${p1}</span>`;
+            });
+
+            textContainer.innerHTML = highlightedText;
+
+            const matchCount = searchMatches.length;
+            if (matchCount > 0) {
+                searchResult.innerHTML = `${matchCount} occurrence(s) found.`;
+                // Optionally highlight the first match
+                currentIndex = 0;
+                highlightCurrentMatch();
+            } else {
+                searchResult.innerHTML = 'No occurrences found.';
+            }
+        }
+
+        function highlightCurrentMatch() {
+            const spans = document.querySelectorAll('#text-container .highlight');
+            spans.forEach(span => span.classList.remove('current'));
+            if (currentIndex >= 0 && currentIndex < spans.length) {
+                spans[currentIndex].classList.add('current');
+                spans[currentIndex].scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+        }
+
+        function prevMatch() {
+            if (currentIndex > 0) {
+                currentIndex--;
+                highlightCurrentMatch();
+            }
+        }
+
+        function nextMatch() {
+            if (currentIndex < searchMatches.length - 1) {
+                currentIndex++;
+                highlightCurrentMatch();
+            }
+        }
+
+        function goToBeginning() {
+            if (searchMatches.length > 0) {
+                currentIndex = 0;
+                highlightCurrentMatch();
+            }
+        }
+    </script>
+</body>
+</html>
